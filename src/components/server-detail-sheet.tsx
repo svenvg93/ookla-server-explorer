@@ -6,6 +6,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { type Server } from '@/lib/types'
+import { countryFlag } from '@/lib/utils'
 
 interface ServerDetailSheetProps {
   server: Server | null
@@ -93,7 +94,12 @@ export function ServerDetailSheet({ server, onClose }: ServerDetailSheetProps) {
               <section className="space-y-3">
                 <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Location</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Country">{server.country} ({server.cc})</Field>
+                  <Field label="Country">
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-base leading-none">{countryFlag(server.cc)}</span>
+                      {server.country} ({server.cc})
+                    </span>
+                  </Field>
                   <Field label="City">{server.name}</Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">

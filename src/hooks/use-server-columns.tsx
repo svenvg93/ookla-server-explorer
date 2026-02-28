@@ -3,6 +3,7 @@ import { type ColumnDef, type Column } from '@tanstack/react-table'
 import { Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { type Server } from '@/lib/types'
+import { countryFlag } from '@/lib/utils'
 
 function SortButton({ label, column }: { label: string; column: Column<Server> }) {
   const sorted = column.getIsSorted()
@@ -25,6 +26,12 @@ export function useServerColumns(copiedId: string | null, copyId: (id: string) =
     {
       accessorKey: 'country',
       header: ({ column }) => <SortButton label="Country" column={column} />,
+      cell: ({ row }) => (
+        <span className="flex items-center gap-1.5">
+          <span className="text-base leading-none">{countryFlag(row.original.cc)}</span>
+          {row.getValue('country')}
+        </span>
+      ),
     },
     {
       accessorKey: 'name',
