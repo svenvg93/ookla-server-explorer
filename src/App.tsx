@@ -6,6 +6,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type FilterFn,
   type PaginationState,
   type SortingState,
   type VisibilityState,
@@ -58,8 +59,9 @@ export default function App() {
     setLoading(true)
     setError(null)
     const trimmed = searchQuery.trim()
-    // Ookla API only supports single-word search; send first word, apply full query client-side
-    const apiTerm = trimmed.split(/\s+/)[0] ?? ''
+    const words = trimmed.split(/\s+/)
+    const apiTerm = words[0] ?? ''
+    const filterTerm = words.slice(1).join(' ')
     try {
       const url = '/api/servers' + (apiTerm ? '?search=' + encodeURIComponent(apiTerm) : '')
       const res = await fetch(url)
@@ -72,8 +74,8 @@ export default function App() {
         throw new Error(msg ?? 'Unexpected response format')
       }
       setAllServers(data as Server[])
-      // Apply full multi-word query as client-side filter
-      if (trimmed) setGlobalFilter(trimmed)
+      setGlobalFilter(filterTerm)
+      if (filterTerm) setQuery(apiTerm)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -126,6 +128,12 @@ export default function App() {
 
   const columns = useServerColumns(copiedId, copyId)
 
+  const multiWordFilter: FilterFn<Server> = (row, _columnId, filterValue: string) => {
+    const words = filterValue.toLowerCase().split(/\s+/).filter(Boolean)
+    const rowText = row.getAllCells().map(c => String(c.getValue() ?? '')).join(' ').toLowerCase()
+    return words.every(w => rowText.includes(w))
+  }
+
   const table = useReactTable({
     data: allServers,
     columns,
@@ -134,6 +142,7 @@ export default function App() {
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: v => { setGlobalFilter(v); setPagination(p => ({ ...p, pageIndex: 0 })) },
     onPaginationChange: setPagination,
+    globalFilterFn: multiWordFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -152,7 +161,7 @@ export default function App() {
   }, [table.getFilteredRowModel().rows]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <ServerDetailSheet server={selectedServer} onClose={() => setSelectedServer(null)} />
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
@@ -186,7 +195,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-screen-2xl px-8 py-8">
+      <main className="mx-auto w-full max-w-screen-2xl px-8 py-8 flex-1">
         {/* Search */}
         <TooltipProvider>
           <div className="flex gap-2 mb-6 max-w-2xl">
@@ -225,6 +234,14 @@ export default function App() {
               </TooltipContent>
             </Tooltip>
           </div>
+          <p className="text-xs text-muted-foreground/60 mt-2">
+            {!query
+              ? 'Nearest to your location'
+              : query.trim().includes(' ')
+                ? 'First word searched via API · rest filtered locally'
+                : 'Searching worldwide'
+            }{' · '}results may be incomplete.
+          </p>
         </TooltipProvider>
 
         {/* Error */}
@@ -249,12 +266,16 @@ export default function App() {
 
         {/* Table */}
         <div className="rounded-lg border">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               {table.getHeaderGroups().map(hg => (
                 <TableRow key={hg.id}>
                   {hg.headers.map(header => (
-                    <TableHead key={header.id} className={header.id === 'sponsor' ? 'pl-8' : undefined}>
+                    <TableHead
+                      key={header.id}
+                      style={{ width: header.getSize() }}
+                      className={header.id === 'sponsor' ? 'pl-8' : undefined}
+                    >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   ))}
@@ -293,7 +314,11 @@ export default function App() {
                     onClick={() => setSelectedServer(row.original)}
                   >
                     {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id} className={cell.column.id === 'sponsor' ? 'pl-8' : undefined}>
+                      <TableCell
+                        key={cell.id}
+                        style={{ width: cell.column.getSize() }}
+                        className={cell.column.id === 'sponsor' ? 'pl-8' : undefined}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -308,7 +333,7 @@ export default function App() {
         {hasData && <ServersPagination table={table} />}
       </main>
 
-      <footer className="border-t px-8 py-4">
+      <footer className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-8 py-4">
         <p className="text-xs text-muted-foreground text-center">
           This tool is not affiliated with, endorsed by, or connected to Ookla, LLC or Speedtest.net.
           Server data is sourced from the publicly available Speedtest server API.

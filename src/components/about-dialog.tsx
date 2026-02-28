@@ -1,4 +1,4 @@
-import { Zap, Database, Info, ExternalLink, Cloud } from 'lucide-react'
+import { Zap, ExternalLink } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
@@ -28,49 +28,10 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
 
         <div className="space-y-5 text-sm">
           {/* About */}
-          <section className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <Info className="h-3 w-3" />
-              About
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              A fast, searchable interface for exploring the public Speedtest server network.
-              Find servers by ISP, city, or country, view their details, and launch a speed test in one click.
-            </p>
-          </section>
-
-          <div className="border-t" />
-
-          {/* Data source */}
-          <section className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <Database className="h-3 w-3" />
-              Data source
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Server data is fetched from the publicly available Speedtest server API
-              at <span className="font-mono text-xs text-foreground">www.speedtest.net/api/js/servers</span>.
-              Data is refreshed on each search.
-            </p>
-          </section>
-
-          <div className="border-t" />
-
-          {/* How it works */}
-          <section className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <Cloud className="h-3 w-3" />
-              How it works
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Requests go through a <span className="text-foreground font-medium">Cloudflare Worker</span> that proxies the Speedtest API.
-              The worker reads your IP geolocation from Cloudflare's edge network and passes your{' '}
-              <span className="font-mono text-xs text-foreground">lat/lon</span> to the API, so results are sorted by proximity to you rather than to a fixed data center.
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              Search sends the first word to the API (its only supported format), then any extra words are applied as a local filter on the returned results.
-            </p>
-          </section>
+          <p className="text-muted-foreground leading-relaxed">
+            A fast, searchable interface for exploring the public Speedtest server network.
+            Find servers by ISP, city, or country, view their details, and launch a speed test in one click.
+          </p>
 
           <div className="border-t" />
 

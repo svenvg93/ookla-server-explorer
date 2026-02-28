@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "worker:dev": "wrangler dev --port 8787",
+    "worker:remote": "wrangler dev --port 8787 --remote",
     "build": "vite build",
     "deploy": "vite build && wrangler deploy"
   },

@@ -22,10 +22,12 @@ export function useServerColumns(copiedId: string | null, copyId: (id: string) =
   return useMemo<ColumnDef<Server>[]>(() => [
     {
       accessorKey: 'sponsor',
+      size: 280,
       header: ({ column }) => <SortButton label="Sponsor / ISP" column={column} />,
     },
     {
       accessorKey: 'country',
+      size: 160,
       header: ({ column }) => <SortButton label="Country" column={column} />,
       cell: ({ row }) => (
         <span className="flex items-center gap-1.5">
@@ -36,6 +38,7 @@ export function useServerColumns(copiedId: string | null, copyId: (id: string) =
     },
     {
       accessorKey: 'name',
+      size: 150,
       header: ({ column }) => <SortButton label="City" column={column} />,
       cell: ({ row }) => (
         <div>
@@ -48,13 +51,15 @@ export function useServerColumns(copiedId: string | null, copyId: (id: string) =
     },
     {
       accessorKey: 'host',
+      size: 260,
       header: 'Host',
       cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground">{row.getValue('host')}</span>
+        <span className="font-mono text-xs text-muted-foreground block truncate">{row.getValue('host')}</span>
       ),
     },
     {
       accessorKey: 'id',
+      size: 140,
       header: ({ column }) => <SortButton label="ID" column={column} />,
       cell: ({ row }) => {
         const id: string = row.getValue('id')
@@ -77,6 +82,7 @@ export function useServerColumns(copiedId: string | null, copyId: (id: string) =
     },
     {
       id: 'actions',
+      size: 140,
       header: '',
       enableHiding: false,
       cell: ({ row }) => {
