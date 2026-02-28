@@ -1,4 +1,4 @@
-name = "ookla-server-collection"
+name = "ookla-server-list"
 main = "worker/index.ts"
 compatibility_date = "2024-09-23"
 
