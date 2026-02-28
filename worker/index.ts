@@ -8,11 +8,16 @@ export default {
 
     if (url.pathname === '/api/servers') {
       const search = url.searchParams.get('search') ?? ''
-      const ooklaUrl =
-        'https://www.speedtest.net/api/js/servers?engine=js&limit=1000' +
-        (search ? '&search=' + encodeURIComponent(search) : '')
+      const cf = (request as Request & { cf?: { latitude?: string; longitude?: string } }).cf
 
-      const clientIp = request.headers.get('CF-Connecting-IP') ?? ''
+      const params = new URLSearchParams({ engine: 'js', limit: '1000' })
+      if (search) params.set('search', search)
+      if (!search && cf?.latitude && cf?.longitude) {
+        params.set('lat', cf.latitude)
+        params.set('lon', cf.longitude)
+      }
+
+      const ooklaUrl = 'https://www.speedtest.net/api/js/servers?' + params.toString()
 
       try {
         const resp = await fetch(ooklaUrl, {
@@ -23,7 +28,6 @@ export default {
             'Referer': 'https://www.speedtest.net/',
             'Origin': 'https://www.speedtest.net',
             'X-Requested-With': 'XMLHttpRequest',
-            ...(clientIp ? { 'X-Forwarded-For': clientIp } : {}),
           },
         })
 
