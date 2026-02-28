@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -7,14 +7,20 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
-  type ColumnFiltersState,
   type PaginationState,
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { Search, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, Zap } from 'lucide-react'
+import {
+  Search, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown,
+  ChevronDown, Zap, X, ServerOff, RefreshCw, Play,
+} from 'lucide-react'
+import { ModeToggle } from '@/components/mode-toggle'
+import { CommandSearch } from '@/components/command-search'
+import { ServerDetailSheet } from '@/components/server-detail-sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -58,19 +64,20 @@ function SortButton({ label, column }: { label: string; column: import('@tanstac
 }
 
 export default function App() {
-  const [allServers, setAllServers]       = useState<Server[]>([])
-  const [query, setQuery]                 = useState('')
-  const [countryFilter, setCountryFilter] = useState('all')
-  const [loading, setLoading]             = useState(false)
-  const [error, setError]                 = useState<string | null>(null)
-  const [copiedId, setCopiedId]           = useState<string | null>(null)
+  const [allServers, setAllServers]         = useState<Server[]>([])
+  const [query, setQuery]                   = useState('')
+  const [loading, setLoading]               = useState(false)
+  const [error, setError]                   = useState<string | null>(null)
+  const [copiedId, setCopiedId]             = useState<string | null>(null)
+  const [selectedServer, setSelectedServer] = useState<Server | null>(null)
+  const [commandOpen, setCommandOpen]       = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   // TanStack Table state
-  const [sorting, setSorting]                 = useState<SortingState>([])
-  const [columnFilters, setColumnFilters]     = useState<ColumnFiltersState>([])
+  const [sorting, setSorting]                   = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [globalFilter, setGlobalFilter]       = useState('')
-  const [pagination, setPagination]           = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
+  const [globalFilter, setGlobalFilter]         = useState('')
+  const [pagination, setPagination]             = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 
   const fetchServers = useCallback(async (searchQuery: string) => {
     setLoading(true)
@@ -103,6 +110,11 @@ export default function App() {
     })
   }
 
+  function clearFilter() {
+    setGlobalFilter('')
+    setPagination(p => ({ ...p, pageIndex: 0 }))
+  }
+
   const columns = useMemo<ColumnDef<Server>[]>(() => [
     {
       accessorKey: 'sponsor',
@@ -131,15 +143,18 @@ export default function App() {
         <span className="font-mono text-xs text-muted-foreground">{row.getValue('host')}</span>
       ),
     },
-{
+    {
       accessorKey: 'id',
       header: ({ column }) => <SortButton label="ID" column={column} />,
       cell: ({ row }) => {
         const id: string = row.getValue('id')
         return (
-          <div className="flex items-center gap-2 text-muted-foreground text-xs tabular-nums">
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs tabular-nums">
             {id}
-            <Button variant="outline" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyId(id)}>
+            <Button
+              variant="outline" size="icon" className="h-6 w-6 shrink-0"
+              onClick={e => { e.stopPropagation(); copyId(id) }}
+            >
               {copiedId === id
                 ? <Check className="h-3 w-3 text-emerald-500" />
                 : <Copy className="h-3 w-3" />}
@@ -148,21 +163,36 @@ export default function App() {
         )
       },
     },
+    {
+      id: 'actions',
+      header: '',
+      enableHiding: false,
+      cell: ({ row }) => {
+        const id: string = row.original.id
+        return (
+          <a
+            href={`https://www.speedtest.net/server/${id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+          >
+            <Button variant="default" size="sm" className="h-7 gap-1.5 px-3 text-xs shrink-0">
+              <Play className="h-3 w-3" />
+              Run speedtest
+            </Button>
+          </a>
+        )
+      },
+    },
   ], [copiedId, copyId])
 
-  const preFiltered = useMemo(() => allServers.filter(s => {
-    if (countryFilter !== 'all' && s.country !== countryFilter) return false
-    return true
-  }), [allServers, countryFilter])
-
   const table = useReactTable({
-    data: preFiltered,
+    data: allServers,
     columns,
-    state: { sorting, columnFilters, columnVisibility, globalFilter, pagination },
+    state: { sorting, columnVisibility, globalFilter, pagination },
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
+    onGlobalFilterChange: v => { setGlobalFilter(v); setPagination(p => ({ ...p, pageIndex: 0 })) },
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -175,39 +205,76 @@ export default function App() {
     sponsor: 'Sponsor / ISP', host: 'Host',
   }
 
-  const countries = [...new Set(allServers.map(s => s.country))].sort()
   const hasData = !loading && !error && allServers.length > 0
+
+  // Stats for the strip
+  const filteredRows = table.getFilteredRowModel().rows
+  const stats = useMemo(() => {
+    const servers = filteredRows.map(r => r.original)
+    return {
+      total: servers.length,
+      countries: new Set(servers.map(s => s.cc)).size,
+      isps: new Set(servers.map(s => s.sponsor)).size,
+    }
+  }, [filteredRows])
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Command search */}
+      <CommandSearch
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        servers={allServers}
+        onSelect={setSelectedServer}
+      />
+
+      {/* Server detail sheet */}
+      <ServerDetailSheet server={selectedServer} onClose={() => setSelectedServer(null)} />
+
       {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-8 h-14 flex items-center gap-3">
         <Zap className="h-4 w-4 text-primary shrink-0" />
         <h1 className="text-sm font-semibold tracking-tight">Speedtest Server Explorer</h1>
         <span className="text-muted-foreground/40 select-none">·</span>
         <span className="text-xs text-muted-foreground hidden sm:block">Browse servers by ISP, operator or city</span>
-        <a
-          href="https://github.com/svenvg93/ookla-server-list"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="GitHub repository"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-          </svg>
-        </a>
+        <div className="ml-auto flex items-center gap-1">
+          <ModeToggle />
+          <a
+            href="https://github.com/svenvg93/ookla-server-list"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center p-2"
+            aria-label="GitHub repository"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+            </svg>
+          </a>
+        </div>
       </header>
 
       <main className="mx-auto max-w-screen-2xl px-8 py-8">
         {/* Search */}
         <div className="flex gap-2 mb-6 max-w-2xl">
-          <Input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && fetchServers(query)}
-            placeholder="Search by ISP, operator, city… (e.g. Orange, Paris, Vodafone)"
-          />
+          <div className="relative flex-1">
+            <Input
+              ref={searchRef}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchServers(query)}
+              placeholder="Search by ISP, operator, city… (e.g. Orange, Paris, Vodafone)"
+              className={query ? 'pr-8' : undefined}
+            />
+            {query && (
+              <button
+                onClick={() => { setQuery(''); fetchServers('') }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <Button onClick={() => fetchServers(query)} disabled={loading}>
             <Search className="h-4 w-4 mr-2" />
             {loading ? 'Loading…' : 'Search'}
@@ -223,33 +290,50 @@ export default function App() {
 
         {/* Toolbar */}
         {hasData && (
-          <div className="flex items-center gap-3 mb-4 flex-wrap">
-            <span className="text-sm text-muted-foreground flex-1">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-1 flex-wrap">
               {(() => {
                 const { pageIndex, pageSize } = table.getState().pagination
                 const total = table.getFilteredRowModel().rows.length
                 const from = total === 0 ? 0 : pageIndex * pageSize + 1
                 const to = Math.min((pageIndex + 1) * pageSize, total)
-                return <>Showing <strong className="text-foreground">{from}–{to}</strong> of{' '}<strong className="text-foreground">{total}</strong> servers</>
+                return <span className="text-sm text-muted-foreground">Showing <strong className="text-foreground">{from}–{to}</strong> of{' '}<strong className="text-foreground">{total}</strong></span>
               })()}
-            </span>
-            <Input
-              value={globalFilter}
-              onChange={e => setGlobalFilter(e.target.value)}
-              placeholder="Filter results…"
-              className="w-48"
-            />
-            <Select value={countryFilter} onValueChange={setCountryFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="All countries" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All countries</SelectItem>
-                {countries.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <span className="text-muted-foreground/40 select-none text-sm">·</span>
+              <Badge variant="secondary" className="font-normal gap-1">
+                <span className="font-semibold">{stats.countries}</span> countries
+              </Badge>
+              <Badge variant="secondary" className="font-normal gap-1">
+                <span className="font-semibold">{stats.isps}</span> ISPs
+              </Badge>
+            </div>
+            <div className="relative">
+              <Input
+                value={globalFilter}
+                onChange={e => table.setGlobalFilter(e.target.value)}
+                placeholder="Filter by ISP, city, country…"
+                className={`h-9 w-56 ${globalFilter ? 'pr-7' : ''}`}
+              />
+              {globalFilter && (
+                <button
+                  onClick={clearFilter}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Clear filter"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              onClick={() => fetchServers(query)}
+              disabled={loading}
+              aria-label="Refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -297,13 +381,26 @@ export default function App() {
                 ))
               ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center text-muted-foreground py-20">
-                    No servers match your filters
+                  <TableCell colSpan={columns.length}>
+                    <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+                      <ServerOff className="h-10 w-10 opacity-30" />
+                      <p className="text-sm font-medium">No servers match your filter</p>
+                      {globalFilter && (
+                        <Button variant="outline" size="sm" onClick={clearFilter} className="gap-1.5">
+                          <X className="h-3.5 w-3.5" />
+                          Clear filter
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 table.getRowModel().rows.map(row => (
-                  <TableRow key={row.id}>
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedServer(row.original)}
+                  >
                     {row.getVisibleCells().map(cell => (
                       <TableCell key={cell.id} className={cell.column.id === 'sponsor' ? 'pl-8' : undefined}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
