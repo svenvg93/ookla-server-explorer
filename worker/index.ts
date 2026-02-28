@@ -9,8 +9,10 @@ export default {
     if (url.pathname === '/api/servers') {
       const search = url.searchParams.get('search') ?? ''
       const ooklaUrl =
-        'https://www.speedtest.net/api/js/servers?engine=js&https_functional=true&limit=1000' +
+        'https://www.speedtest.net/api/js/servers?engine=js&limit=1000' +
         (search ? '&search=' + encodeURIComponent(search) : '')
+
+      const clientIp = request.headers.get('CF-Connecting-IP') ?? ''
 
       try {
         const resp = await fetch(ooklaUrl, {
@@ -21,6 +23,7 @@ export default {
             'Referer': 'https://www.speedtest.net/',
             'Origin': 'https://www.speedtest.net',
             'X-Requested-With': 'XMLHttpRequest',
+            ...(clientIp ? { 'X-Forwarded-For': clientIp } : {}),
           },
         })
 
