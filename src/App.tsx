@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import {
   flexRender,
@@ -42,7 +42,6 @@ export default function App() {
   const [error, setError]                   = useState<string | null>(null)
   const [selectedServer, setSelectedServer] = useState<Server | null>(null)
   const [aboutOpen, setAboutOpen]           = useState(false)
-  const searchRef = useRef<HTMLInputElement>(null)
   const { copied: copiedId, copy: copyId } = useCopyToClipboard()
 
   // TanStack Table state
@@ -111,6 +110,8 @@ export default function App() {
     setGlobalFilter('')
     setPagination(p => ({ ...p, pageIndex: 0 }))
   }, [])
+
+  const handleRefresh = useCallback(() => fetchServers(query), [fetchServers, query])
 
   const columns = useServerColumns(copiedId, copyId)
 
@@ -181,7 +182,7 @@ export default function App() {
           <div className="flex gap-2 mb-6 max-w-2xl">
             <div className="relative flex-1">
               <Input
-                ref={searchRef}
+
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && fetchServers(query)}
@@ -231,17 +232,17 @@ export default function App() {
           </div>
         )}
 
-        {/* Toolbar */}
-        {hasData && (
+        {/* Toolbar - always mounted so the / keyboard shortcut stays active */}
+        <div hidden={!hasData}>
           <ServersToolbar
             table={table}
             stats={stats}
             globalFilter={globalFilter}
             loading={loading}
-            onRefresh={() => fetchServers(query)}
+            onRefresh={handleRefresh}
             onClearFilter={clearFilter}
           />
-        )}
+        </div>
 
         {/* Table */}
         <div className="rounded-lg border">
