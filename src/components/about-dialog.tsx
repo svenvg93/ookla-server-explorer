@@ -1,4 +1,5 @@
 import { Zap, ExternalLink } from 'lucide-react'
+import { GITHUB_REPO_URL } from '@/lib/constants'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
@@ -38,7 +39,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
           {/* Links */}
           <section className="space-y-2.5">
             <a
-              href="https://github.com/svenvg93/ookla-server-explorer"
+              href={GITHUB_REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"

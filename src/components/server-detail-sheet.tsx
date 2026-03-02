@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef } from 'react'
 import { Copy, Check, ExternalLink, Star } from 'lucide-react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -7,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { type Server } from '@/lib/types'
 import { countryFlag } from '@/lib/utils'
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 
 interface ServerDetailSheetProps {
   server: Server | null
@@ -14,16 +14,7 @@ interface ServerDetailSheetProps {
 }
 
 function CopyField({ label, value, href }: { label: string; value: string; href?: string }) {
-  const [copied, setCopied] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-  function copy() {
-    navigator.clipboard.writeText(value).then(() => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      setCopied(true)
-      timerRef.current = setTimeout(() => setCopied(false), 1500)
-    })
-  }
+  const { copied, copy } = useCopyToClipboard()
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1.5">
@@ -36,8 +27,8 @@ function CopyField({ label, value, href }: { label: string; value: string; href?
       </div>
       <div className="flex items-center gap-2">
         <p className="font-mono text-sm break-all flex-1">{value}</p>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={copy}>
-          {copied
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copy(value)}>
+          {copied === value
             ? <Check className="h-3 w-3 text-emerald-500" />
             : <Copy className="h-3 w-3 text-muted-foreground" />}
         </Button>

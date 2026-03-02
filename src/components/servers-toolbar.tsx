@@ -1,4 +1,4 @@
-import { type RefObject } from 'react'
+import { useRef, useEffect } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { RefreshCw, ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 import { type Server } from '@/lib/types'
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -21,19 +22,33 @@ interface ServersToolbarProps {
   table: Table<Server>
   stats: { total: number; countries: number; isps: number }
   globalFilter: string
-  filterRef: RefObject<HTMLInputElement>
   loading: boolean
   onRefresh: () => void
   onClearFilter: () => void
 }
 
 export function ServersToolbar({
-  table, stats, globalFilter, filterRef, loading, onRefresh, onClearFilter,
+  table, stats, globalFilter, loading, onRefresh, onClearFilter,
 }: ServersToolbarProps) {
+  const filterRef = useRef<HTMLInputElement>(null)
   const { pageIndex, pageSize } = table.getState().pagination
   const total = table.getFilteredRowModel().rows.length
   const from = total === 0 ? 0 : pageIndex * pageSize + 1
   const to = Math.min((pageIndex + 1) * pageSize, total)
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
+        const tag = (e.target as HTMLElement).tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        e.preventDefault()
+        filterRef.current?.focus()
+        filterRef.current?.select()
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [])
 
   return (
     <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -56,7 +71,7 @@ export function ServersToolbar({
           value={globalFilter}
           onChange={e => table.setGlobalFilter(e.target.value)}
           placeholder="Filter by ISP, city, country…"
-          className={`h-9 w-56 ${globalFilter ? 'pr-7' : ''}`}
+          className={cn('h-9 w-56', globalFilter && 'pr-7')}
         />
         {globalFilter && (
           <button
@@ -72,7 +87,7 @@ export function ServersToolbar({
         variant="outline" size="icon" className="h-9 w-9 shrink-0"
         onClick={onRefresh} disabled={loading} aria-label="Refresh"
       >
-        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
