@@ -19,7 +19,7 @@ import { AboutDialog } from '@/components/about-dialog'
 import { ServersToolbar } from '@/components/servers-toolbar'
 import { ServersPagination } from '@/components/servers-pagination'
 import { useServerColumns } from '@/hooks/use-server-columns'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -178,7 +178,6 @@ export default function App() {
 
       <main className="mx-auto w-full max-w-screen-2xl px-8 py-8 flex-1">
         {/* Search */}
-        <TooltipProvider>
           <div className="flex gap-2 mb-6 max-w-2xl">
             <div className="relative flex-1">
               <Input
@@ -203,17 +202,18 @@ export default function App() {
               <Search className="h-4 w-4 mr-2" />
               {loading ? 'Loading…' : 'Search'}
             </Button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground" tabIndex={-1}>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground">
                   <Info className="h-4 w-4" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-64 text-xs leading-relaxed">
+              </PopoverTrigger>
+              <PopoverContent side="right" className="max-w-64 text-xs leading-relaxed">
                 <p className="font-medium mb-1">How search works</p>
                 <p>The first word is sent to the Speedtest API to fetch matching servers. Any additional words refine the results locally — so <span className="font-mono">Orange France</span> fetches all Orange servers, then filters for France.</p>
-              </TooltipContent>
-            </Tooltip>
+                <p className="mt-1 text-muted-foreground">The API returns a maximum of 100 results per query.</p>
+              </PopoverContent>
+            </Popover>
           </div>
           <p className="text-xs text-muted-foreground/60 mt-2">
             {!query
@@ -221,9 +221,8 @@ export default function App() {
               : query.trim().includes(' ')
                 ? 'First word searched via API · rest filtered locally'
                 : 'Searching worldwide'
-            }{' · '}results may be incomplete.
+            }{' · '}API returns max 100 results.
           </p>
-        </TooltipProvider>
 
         {/* Error */}
         {error && (
