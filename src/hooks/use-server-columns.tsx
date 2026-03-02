@@ -3,9 +3,12 @@ import { type ColumnDef, type Column, type FilterFn } from '@tanstack/react-tabl
 
 const arrIncludesValue: FilterFn<never> = (row, columnId, filterValues: string[]) =>
   filterValues.includes(row.getValue(columnId))
-import { Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Play } from 'lucide-react'
+import { Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Play, MoreHorizontal, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { type Server } from '@/lib/types'
 import { countryFlag } from '@/lib/utils'
 
@@ -88,23 +91,45 @@ export function useServerColumns(copiedId: string | null, copyId: (id: string) =
     },
     {
       id: 'actions',
-      size: 140,
+      size: 60,
       header: '',
       enableHiding: false,
       cell: ({ row }) => {
         const id: string = row.original.id
         return (
-          <a
-            href={`https://www.speedtest.net/server/${id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-          >
-            <Button variant="default" size="sm" className="h-7 gap-1.5 px-3 text-xs shrink-0">
-              <Play className="h-3 w-3" />
-              Run speedtest
-            </Button>
-          </a>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost" size="icon" className="h-7 w-7"
+                onClick={e => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <a
+                  href={`https://www.speedtest.net/server/${id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Run speedtest
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={e => {
+                  e.stopPropagation()
+                  navigator.clipboard.writeText(`speedtest --server-id=${id}`)
+                }}
+              >
+                <Terminal className="h-3.5 w-3.5" />
+                Copy CLI command
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       },
     },
